@@ -1,0 +1,129 @@
+---
+title: "Energy Efficiency Project_Data Management and Imputation"
+author: "Minwoo Ahn"
+date: "17 Jan 2021"
+header_includes: 
+  - \usepackage{amsmath}
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+***
+
+<br/>
+<br/>
+
+##Upload the dataset
+```{r}
+# Read the state version 13 to R
+library(readstata13)
+dat <- read.dta13("c:/Users/ahnmi/OneDrive/Documents/EE distribution w Liz/imputed_data.dta")
+```
+<br/>
+<br/>
+
+##variables for the models in EE paper
+```{r}
+library(tidyverse)
+#Making the dataset for the primary models
+ndat1 <- select(dat, uid, uid3, util_id, year, lnee_pct, lnee_inc_res, lnee_inc_com, lnee_inc_ind, reg_authority, mandate, delib, delib_exp, formal_exp, citid, pipc, lag_pop_na, lag_tot_price, lnres_cust, lntot_peak, pct_ret, lnretsales_pc, lncomsales_pc, lnressales_pc, lnindsales_pc)
+
+```
+
+## Conduct a balance analysis of the data
+
+```{r}
+#impute values
+#Check missing values at glance 
+#is.na(ndat1)
+#calculate the percentage of missing
+rmarkdownTable <- function(df){
+  # This section generates the table structure
+  cat("Variable", collapse = "|", "# missing", collapse = "|", "% missing", collapse = "|")
+  cat("\n")
+  cat("---", collapse = "|", ":-:", collapse = "|", ":-:", collapse = "|")
+  cat("\n")
+    # This section calculates the missing data
+    for(i in colnames(ndat1)){
+      n<-nrow(ndat1)
+      md<-sum(is.na(ndat1[,i])) 
+      cat(i, collapse = "|", md, collapse = "|", (md/n)*100, collapse = "|")
+      cat("\n")
+      }
+invisible(NULL)
+}
+
+rmarkdownTable(head(iris))
+```
+
+```{r}
+#missing values by year across all variables
+rmarkdownTable <- function(df){
+  cat("Year", collapse = "|", "# missing", collapse = "|", "% missing", collapse = "|")
+  cat("\n")
+  cat("---", collapse = "|", ":-:", collapse = "|", ":-:", collapse = "|")
+  cat("\n")
+  for(i in unique(ndat1$year)){
+    y_df=subset(ndat1, year==i)
+    myn<-nrow(y_df)
+    myt<-ncol(y_df)
+    md<-sum(is.na(y_df)) 
+    cat(i, collapse = "|", md, collapse = "|", (md/(myn*myt))*100, collapse = "|")
+    cat("\n")
+    }
+invisible(NULL)
+}
+# End loop
+
+rmarkdownTable(head(iris))
+
+
+```
+
+
+## Imputing missing data
+
+```{r}
+##Impute missing values using Amelia
+library(Amelia)
+out1 <- amelia(ndat1, m=5, ts = "year", cs = "uid3", idvars = c("uid"))
+               #idvars = c("uid", "uid2", "uid3", "year", "smplreg"),
+               #noms = "spp", "miso", "pjm", "isone")
+
+## If it doesn't converge # When I drop some varialbes that won't be imputed in Amelia (because it is prefectly balanced), the imputation model converges more easily.
+
+#Amelia II guide
+"Long chains should remind the analyst to consider whether transformations of the variables would more closely fit the multivariate normal assumptions of the model (correct but omitted transformations will shorten the number of steps and improve the fit of the imputations), but do not necessarily denote problems with the imputation model."
+
+#multivariate normal distributions is a generalization of the one-dimensional normal distribution to higher dimensions.
+
+#"The essential problem of imputation is that we only observe $\D^obs}$, not the entirety of D. In order to gain traction, we need to make the usual assumption in multiple imputation that the data are missing at random (MAR)."
+```
+
+```{r}
+```
+
+
+```{r}
+#saving the imputed databases
+write.amelia(obj=out1, file.stem = "output_", format = "csv")
+write.amelia(obj=out1, file.stem = "output_all", format = "csv", separate = FALSE, orig.data=TRUE)
+
+```
+
+```{r}
+#compare the distribution of the observed and imputed data
+plot(out1, which.vars = c("pct_ret", "lntot_peak", "lnres_cust", "lag_tot_price", "citid", "lnee_pct", "lnretsales_pc"))
+
+```
+<br/>
+<br/>
+
+blahblahblah
+
